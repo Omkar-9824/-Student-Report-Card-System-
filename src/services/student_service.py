@@ -4,7 +4,7 @@ import mysql.connector
 from mysql.connector import Error
 from random import random
 from random import randint
-
+from tabulate import tabulate
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -35,6 +35,61 @@ class StudentService:
             return student_id  # Return the generated student ID
         except Error as e:
             print(f"Error while adding student: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+                
+    def register_candidate(self, username, password, student_id):
+        """Register a new candidate (student) with username and password."""
+        connection = None
+        cursor = None
+        try:
+            connection = self.create_connection()
+            cursor = connection.cursor()
+
+            # Check if the username already exists
+            cursor.execute("SELECT username FROM users WHERE username = %s", (username,))
+            existing_user = cursor.fetchone()
+            if existing_user:
+                print(f"Username '{username}' is already taken.")
+                return False
+
+            # Insert candidate login information
+            cursor.execute("INSERT INTO users (username, password, student_id) VALUES (%s, %s, %s)",
+                           (username, password, student_id))
+            connection.commit()
+            print(f"Candidate '{username}' registered successfully.")
+            return True
+        except Error as e:
+            print(f"Error during registration: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+
+    def candidate_login(self, username, password):
+        """Validate candidate login credentials."""
+        connection = None
+        cursor = None
+        try:
+            connection = self.create_connection()
+            cursor = connection.cursor()
+
+            # Check if the username and password match
+            cursor.execute("SELECT student_id FROM users WHERE username = %s AND password = %s",
+                           (username, password))
+            user = cursor.fetchone()
+            if user:
+                print(f"Candidate '{username}' logged in successfully.")
+                return user[0]  # Return the associated student_id
+            else:
+                print("Invalid username or password.")
+                return None
+        except Error as e:
+            print(f"Error during login: {e}")
         finally:
             if cursor:
                 cursor.close()
@@ -126,7 +181,7 @@ class StudentService:
                 connection.close()
 
     def generate_report(self, student_id):
-        """Generate a report for a student."""
+        """Generate a report for a student with tabulated data."""
         connection = None
         cursor = None
         try:
@@ -151,9 +206,12 @@ class StudentService:
             total_marks = sum(row[1] for row in results)
             grade = self.calculate_grade(total_marks)
             report = f"Student ID: {student_id}\n"
-            report += f"Total Marks: {total_marks}\nGrade: {grade}\nMarks by Subject:\n"
-            for subject, marks in results:
-                report += f"  {subject}: {marks}\n"
+            report += f"Total Marks: {total_marks}\nGrade: {grade}\n"
+
+            # Create a table for marks by subject
+            table = [(subject, marks) for subject, marks in results]
+            report += "Marks by Subject:\n"
+            report += tabulate(table, headers=["Subject", "Marks"], tablefmt="grid")
 
             # Optionally, insert the report card into the database
             cursor.execute('''INSERT INTO report_cards (student_id, total_marks, grade) VALUES (%s, %s, %s)''',

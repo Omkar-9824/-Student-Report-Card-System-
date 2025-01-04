@@ -53,6 +53,19 @@ def create_tables():
                 FOREIGN KEY(student_id) REFERENCES students(student_id)
             )
             ''')
+            
+            # Create admin credentials table
+            cursor.execute('''CREATE TABLE IF NOT EXISTS admin_credentials (
+                username VARCHAR(255) PRIMARY KEY,
+                password VARCHAR(255) NOT NULL
+            )''')
+
+            # Hardcode admin username and password for authentication
+            cursor.execute('''SELECT * FROM admin_credentials WHERE username = %s''', ('admin',))
+            if cursor.fetchone() is None:
+                cursor.execute('''INSERT INTO admin_credentials (username, password) VALUES (%s, %s)''',
+                               ('admin', 'admin123'))  # Hardcoded username and password
+                connection.commit()
 
             connection.commit()
     except mysql.connector.Error as e:
