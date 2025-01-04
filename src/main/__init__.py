@@ -5,18 +5,19 @@ import random
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config.db_config import DatabaseConfig
+from config.database import *
 from services.student_service import StudentService
 from helper import display_student_report
 
 def main():
-    db_config = DatabaseConfig()
     service = StudentService()
     print("Welcome to the Student Report Card System!")
 
     while True:
         print("\nMenu:")
         print("1. Add a Student")
-        print("2. Assign Subject to a Student")
+        print("2. Add a Subject")
+        # print("3. Assign Subject to a Student")
         print("3. Input Marks")
         print("4. Generate Report Card")
         print("5. Exit")
@@ -31,14 +32,23 @@ def main():
             print(f"Student added successfully with ID: {student_id}")
 
         elif choice == "2":
-            # Assign a subject to a student
-            student_id = input("Enter student ID: ")
-            subject_name = input("Enter subject name: ")
-            subject = service.assign_subject(student_id, subject_name)
+            # Add a new subject
+            subject_name = input("Enter the subject name: ")
+            subject = service.add_subject(subject_name)
             if subject:
-                print(f"Subject '{subject}' assigned to student with ID: {student_id}")
+                print(f"Subject '{subject}' added successfully.")
             else:
-                print("Subject or Student ID not found!")
+                print(f"Error adding subject.")
+
+        # elif choice == "3":
+        #     # Assign a subject to a student
+        #     student_id = input("Enter student ID: ")
+        #     subject_name = input("Enter subject name: ")
+        #     subject = service.assign_subject(student_id, subject_name)
+        #     if subject:
+        #         print(f"Subject '{subject}' assigned to student with ID: {student_id}")
+        #     else:
+        #         print("Subject or Student ID not found!")
 
         elif choice == "3":
             # Input marks for a student
@@ -56,7 +66,7 @@ def main():
             student_id = input("Enter student ID: ")
             report = service.generate_report(student_id)
             if report:
-                display_student_report(report)
+                print(report)
             else:
                 print(f"Error: Report card not found for student ID '{student_id}'.")
 
@@ -66,7 +76,7 @@ def main():
             break
 
         else:
-            print("Invalid choice. Please enter a number between 1 and 5.")
+            print("Invalid choice. Please enter a number between 1 and 6.")
 
 if __name__ == "__main__":
     main()
