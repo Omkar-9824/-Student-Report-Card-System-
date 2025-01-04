@@ -1,16 +1,16 @@
 import sys
 import os
+import random
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-
+from config.db_config import DatabaseConfig
 from services.student_service import StudentService
 from helper import display_student_report
 
-
 def main():
+    db_config = DatabaseConfig()
     service = StudentService()
-    print(dir(service))
     print("Welcome to the Student Report Card System!")
 
     while True:
@@ -27,8 +27,8 @@ def main():
             # Add a new student
             name = input("Enter student's name: ")
             age = int(input("Enter student's age: "))
-            student = service.add_student(name, age)
-            print(f"Student added successfully with ID: {student.id}")
+            student_id = service.add_student(name, age)
+            print(f"Student added successfully with ID: {student_id}")
 
         elif choice == "2":
             # Assign a subject to a student
@@ -36,20 +36,20 @@ def main():
             subject_name = input("Enter subject name: ")
             subject = service.assign_subject(student_id, subject_name)
             if subject:
-                print(f"Subject '{subject.name}' assigned to student with ID: {student_id}")
+                print(f"Subject '{subject}' assigned to student with ID: {student_id}")
             else:
-                print("Student ID not found!")
+                print("Subject or Student ID not found!")
 
         elif choice == "3":
             # Input marks for a student
             student_id = input("Enter student ID: ")
             subject_name = input("Enter subject name: ")
             marks = int(input("Enter marks: "))
-            report_card = service.input_marks(student_id, subject_name, marks)
-            if report_card:
+            success = service.input_marks(student_id, subject_name, marks)
+            if success:
                 print(f"Marks for '{subject_name}' updated for student ID: {student_id}")
             else:
-                print("Report Card not found for this student ID!")
+                print("Marks not updated due to errors!")
 
         elif choice == "4":
             # Generate report card for a student

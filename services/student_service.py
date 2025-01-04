@@ -1,72 +1,149 @@
-import random
+import sys
+import os
+import mysql.connector
+from mysql.connector import Error
 
-from modules.models import Student, ReportCard, Subject
-class Student:
-    def __init__(self, student_id, name, age):
-        self.id = student_id
-        self.name = name
-        self.age = age
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-
+from config.db_config import DatabaseConfig
 
 class StudentService:
-    def __init__(self):
-        self.students = []  # List to store student objects
-        self.subjects = []  # List to store subject objects
-        self.report_cards = {}  # Dictionary to store report cards by student ID
+    
+    def create_connection(self):
+        """Create a database connection and return it."""
+        connection = DatabaseConfig.get_connection()
+        return connection
 
     def add_student(self, name, age):
-        # Generate a unique student ID
-        student_id = f"STU-{random.randint(1000, 9999)}"
+     connection = None
+     cursor = None
+     try:
+         connection = self.create_connection()
+         if connection:
+            cursor = connection.cursor()
 
-        # Create a new student object
-        student = Student(student_id, name, age)
+            # Insert student logic
+            cursor.execute('''INSERT INTO students (name, age) VALUES (%s, %s)''', (name, age))
+            connection.commit()
 
-        # Add the student to the list
-        self.students.append(student)
+            # Get the student ID of the newly inserted student
+            cursor.execute("SELECT LAST_INSERT_ID()")
+            student_id = cursor.fetchone()[0]
 
-        return student
+            return student_id  # Return the student ID
+
+     except mysql.connector.Error as e:
+        print(f"Error while adding student: {e}")
+     finally:
+        # Ensure cursor and connection are closed properly
+        if cursor:
+            cursor.close()
+        if connection:
+            connection.close()
+
+
 
     def assign_subject(self, student_id, subject_name):
-        # Check if student exists
-        student = next((s for s in self.students if s.id == student_id), None)
-        if student:
-            subject = Subject(subject_name)
-            self.subjects.append(subject)
-            return subject
-        return None
+        """Assign a subject to the student."""
+        connection = None
+        cursor = None
+        try:
+            connection = self.create_connection()
+            if connection:
+                cursor = connection.cursor()
+
+                # Get subject ID
+                cursor.execute("SELECT subject_id FROM subjects WHERE subject_name = %s", (subject_name,))
+                subject_id = cursor.fetchone()
+                if not subject_id:
+                    print(f"Subject '{subject_name}' not found.")
+                    return None
+
+                # Insert subject assignment logic (e.g., linking student and subject)
+                cursor.execute("INSERT INTO student_subjects (student_id, subject_id) VALUES (%s, %s)", (student_id, subject_id[0]))
+                connection.commit()
+                print(f"Subject '{subject_name}' assigned to student with ID: {student_id}")
+                return subject_name  # Return the subject name as confirmation
+        except Error as e:
+            print(f"Error: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
 
     def input_marks(self, student_id, subject_name, marks):
-        # Find the student by ID
-        student = next((s for s in self.students if s.id == student_id), None)
-        if student:
-            report_card = self.report_cards.get(student_id, ReportCard(student))
-            report_card.add_marks(subject_name, marks)
-            self.report_cards[student_id] = report_card
-            return report_card
-        return None
+        """Input marks for a student."""
+        connection = None
+        cursor = None
+        try:
+            connection = self.create_connection()
+            if connection:
+                cursor = connection.cursor()
+
+                # Get the subject ID
+                cursor.execute("SELECT subject_id FROM subjects WHERE subject_name = %s", (subject_name,))
+                subject_id = cursor.fetchone()
+                if not subject_id:
+                    print(f"Subject '{subject_name}' not found.")
+                    return None
+
+                # Insert marks into the marks table
+                cursor.execute("INSERT INTO marks (student_id, subject_id, marks) VALUES (%s, %s, %s)",
+                               (student_id, subject_id[0], marks))
+                connection.commit()
+                print(f"Marks for '{subject_name}' added successfully for student ID: {student_id}.")
+                return True  # Marks were successfully added
+        except Error as e:
+            print(f"Error: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
 
     def generate_report(self, student_id):
-        # Check if the report card exists for the student
-        if student_id not in self.report_cards:
-            print(f"Error: No report card found for student ID '{student_id}'.")
-            return None
+        """Generate a report for a student."""
+        connection = None
+        cursor = None
+        try:
+            connection = self.create_connection()
+            if connection:
+                cursor = connection.cursor()
 
-        # Get the report card for the student
-        report_card = self.report_cards[student_id]
+                # Fetch marks and subjects for the student
+                query = """
+                SELECT subjects.subject_name, marks.marks
+                FROM marks
+                JOIN subjects ON marks.subject_id = subjects.subject_id
+                WHERE marks.student_id = %s
+                """
+                cursor.execute(query, (student_id,))
+                results = cursor.fetchall()
 
-        # Format the report
-        report = f"Student ID: {student_id}\n"
-        total_marks = sum(report_card.marks.values())
-        grade = self.calculate_grade(total_marks)
-        report += f"Total Marks: {total_marks}\nGrade: {grade}\nMarks by Subject:\n"
-        for subject, marks in report_card.marks.items():
-            report += f"  {subject}: {marks}\n"
+                if not results:
+                    print(f"No records found for student ID: {student_id}")
+                    return None
 
-        return report
+                # Generate the report
+                total_marks = sum(row[1] for row in results)
+                grade = self.calculate_grade(total_marks)
+                report = f"Student ID: {student_id}\n"
+                report += f"Total Marks: {total_marks}\nGrade: {grade}\nMarks by Subject:\n"
+                for subject, marks in results:
+                    report += f"  {subject}: {marks}\n"
+
+                return report
+        except Error as e:
+            print(f"Error: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
 
     def calculate_grade(self, total_marks):
-        # Grade calculation logic based on total marks
+        """Calculate the grade based on total marks."""
         if total_marks >= 90:
             return 'A'
         elif total_marks >= 75:
