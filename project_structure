@@ -1,0 +1,14 @@
+1> auth for the user
+    1>new user
+    2>existing user
+  1>take all the data and store it in the table for ex: nane email phone password address city pin code
+  2>take email and password validate email and password from the database
+
+2> move to the program features>>>>>>
+
+Note: Program Should be dynamic:
+every project should have search option search by name or id
+
+Note: Display the data in table format in the console.
+
+every List should have exit option so that it will come to previous menu:
